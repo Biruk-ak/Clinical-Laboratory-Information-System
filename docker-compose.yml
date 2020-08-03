@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lis
+      POSTGRES_PASSWORD: lis
+      POSTGRES_DB: clinical_lis
+    ports:
+      - "5432:5432"
+    volumes:
+      - lis_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lis -d clinical_lis"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    environment:
+      DATABASE_URL: postgres://lis:lis@db:5432/clinical_lis?sslmode=disable
+      HTTP_ADDR: ":8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  lis_pg:
