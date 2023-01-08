@@ -1,0 +1,58 @@
+package models
+
+
+import (
+	"time"
+)
+
+// AuthRecord24 represents a domain record in the auth bounded context.
+type AuthRecord24 struct {
+	ID            string    `json:"id" db:"id"`
+	ExternalCode  string    `json:"external_code" db:"external_code"`
+	DisplayName   string    `json:"display_name" db:"display_name"`
+	Status        string    `json:"status" db:"status"`
+	Priority      int       `json:"priority" db:"priority"`
+	FacilityID    string    `json:"facility_id" db:"facility_id"`
+	CreatedBy     string    `json:"created_by" db:"created_by"`
+	UpdatedBy     string    `json:"updated_by" db:"updated_by"`
+	Notes         string    `json:"notes" db:"notes"`
+	MetadataJSON  string    `json:"metadata_json" db:"metadata_json"`
+	Version       int64     `json:"version" db:"version"`
+	IsActive      bool      `json:"is_active" db:"is_active"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+	ArchivedAt    *time.Time `json:"archived_at,omitempty" db:"archived_at"`
+}
+
+// Validate performs lightweight domain validation for AuthRecord24.
+func (r *AuthRecord24) Validate() error {
+	if r.ID == "" {
+		return ErrInvalidID
+	}
+	if r.DisplayName == "" {
+		return ErrMissingDisplayName
+	}
+	if r.Status == "" {
+		return ErrMissingStatus
+	}
+	if r.Priority < 0 || r.Priority > 100 {
+		return ErrInvalidPriority
+	}
+	return nil
+}
+
+// SoftArchive marks the record inactive and stamps archive time.
+func (r *AuthRecord24) SoftArchive(actor string, at time.Time) {
+	r.IsActive = false
+	r.UpdatedBy = actor
+	r.UpdatedAt = at
+	r.ArchivedAt = &at
+	r.Version++
+}
+
+// Touch bumps version and update timestamps for optimistic concurrency.
+func (r *AuthRecord24) Touch(actor string, at time.Time) {
+	r.UpdatedBy = actor
+	r.UpdatedAt = at
+	r.Version++
+}
