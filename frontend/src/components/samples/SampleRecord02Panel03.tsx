@@ -1,0 +1,89 @@
+import { useEffect, useState, startTransition } from 'react';
+import type { SampleRecord02 } from '../../types/samples02';
+import { formatSampleRecord02Label, isSampleRecord02Active, compareSampleRecord02ByPriority } from '../../types/samples02';
+import { listSampleRecord02, archiveSampleRecord02 } from '../../api/samples02';
+
+export interface SampleRecord02Panel03Props {
+  facilityId: string;
+  title?: string;
+  onSelect?: (item: SampleRecord02) => void;
+}
+
+/**
+ * SampleRecord02Panel03 — operational panel for samples domain slice 02/03.
+ * Supports list, filter by active status, and soft-archive actions.
+ */
+export function SampleRecord02Panel03({ facilityId, title = 'SampleRecord02 Workspace', onSelect }: SampleRecord02Panel03Props) {
+  const [items, setItems] = useState<SampleRecord02[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    listSampleRecord02(facilityId)
+      .then((res) => {
+        if (cancelled) return;
+        startTransition(() => {
+          setItems([...res.items].sort(compareSampleRecord02ByPriority));
+          setError(null);
+        });
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
+
+  const filtered = items.filter((item) => {
+    if (!isSampleRecord02Active(item) && query !== 'show-inactive') return false;
+    if (!query || query === 'show-inactive') return true;
+    const hay = `${item.externalCode} ${item.displayName} ${item.status}`.toLowerCase();
+    return hay.includes(query.toLowerCase());
+  });
+
+  async function onArchive(id: string) {
+    await archiveSampleRecord02(id);
+    setItems((prev) => prev.filter((x) => x.id !== id));
+  }
+
+  return (
+    <section className="lis-panel lis-panel--samples" aria-label={title}>
+      <header className="lis-panel__header">
+        <h2>{title}</h2>
+        <input
+          className="lis-panel__search"
+          placeholder="Filter records…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </header>
+      {loading && <p className="lis-panel__status">Loading samples data…</p>}
+      {error && <p className="lis-panel__error" role="alert">{error}</p>}
+      <ul className="lis-panel__list">
+        {filtered.map((item) => (
+          <li key={item.id} className="lis-panel__item">
+            <button type="button" className="lis-panel__select" onClick={() => onSelect?.(item)}>
+              <span className="lis-panel__label">{formatSampleRecord02Label(item)}</span>
+              <span className="lis-panel__meta">{item.status} · P{item.priority}</span>
+            </button>
+            <button type="button" className="lis-panel__archive" onClick={() => void onArchive(item.id)}>
+              Archive
+            </button>
+          </li>
+        ))}
+      </ul>
+      <footer className="lis-panel__footer">
+        Showing {filtered.length} of {items.length} samples records (slice 02-03)
+      </footer>
+    </section>
+  );
+}
+
+export default SampleRecord02Panel03;
