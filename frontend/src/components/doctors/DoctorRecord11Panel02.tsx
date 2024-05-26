@@ -1,0 +1,89 @@
+import { useEffect, useState, startTransition } from 'react';
+import type { DoctorRecord11 } from '../../types/doctors11';
+import { formatDoctorRecord11Label, isDoctorRecord11Active, compareDoctorRecord11ByPriority } from '../../types/doctors11';
+import { listDoctorRecord11, archiveDoctorRecord11 } from '../../api/doctors11';
+
+export interface DoctorRecord11Panel02Props {
+  facilityId: string;
+  title?: string;
+  onSelect?: (item: DoctorRecord11) => void;
+}
+
+/**
+ * DoctorRecord11Panel02 — operational panel for doctors domain slice 11/02.
+ * Supports list, filter by active status, and soft-archive actions.
+ */
+export function DoctorRecord11Panel02({ facilityId, title = 'DoctorRecord11 Workspace', onSelect }: DoctorRecord11Panel02Props) {
+  const [items, setItems] = useState<DoctorRecord11[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    listDoctorRecord11(facilityId)
+      .then((res) => {
+        if (cancelled) return;
+        startTransition(() => {
+          setItems([...res.items].sort(compareDoctorRecord11ByPriority));
+          setError(null);
+        });
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
+
+  const filtered = items.filter((item) => {
+    if (!isDoctorRecord11Active(item) && query !== 'show-inactive') return false;
+    if (!query || query === 'show-inactive') return true;
+    const hay = `${item.externalCode} ${item.displayName} ${item.status}`.toLowerCase();
+    return hay.includes(query.toLowerCase());
+  });
+
+  async function onArchive(id: string) {
+    await archiveDoctorRecord11(id);
+    setItems((prev) => prev.filter((x) => x.id !== id));
+  }
+
+  return (
+    <section className="lis-panel lis-panel--doctors" aria-label={title}>
+      <header className="lis-panel__header">
+        <h2>{title}</h2>
+        <input
+          className="lis-panel__search"
+          placeholder="Filter records…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </header>
+      {loading && <p className="lis-panel__status">Loading doctors data…</p>}
+      {error && <p className="lis-panel__error" role="alert">{error}</p>}
+      <ul className="lis-panel__list">
+        {filtered.map((item) => (
+          <li key={item.id} className="lis-panel__item">
+            <button type="button" className="lis-panel__select" onClick={() => onSelect?.(item)}>
+              <span className="lis-panel__label">{formatDoctorRecord11Label(item)}</span>
+              <span className="lis-panel__meta">{item.status} · P{item.priority}</span>
+            </button>
+            <button type="button" className="lis-panel__archive" onClick={() => void onArchive(item.id)}>
+              Archive
+            </button>
+          </li>
+        ))}
+      </ul>
+      <footer className="lis-panel__footer">
+        Showing {filtered.length} of {items.length} doctors records (slice 11-02)
+      </footer>
+    </section>
+  );
+}
+
+export default DoctorRecord11Panel02;
