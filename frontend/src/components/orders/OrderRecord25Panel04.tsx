@@ -1,0 +1,89 @@
+import { useEffect, useState, startTransition } from 'react';
+import type { OrderRecord25 } from '../../types/orders25';
+import { formatOrderRecord25Label, isOrderRecord25Active, compareOrderRecord25ByPriority } from '../../types/orders25';
+import { listOrderRecord25, archiveOrderRecord25 } from '../../api/orders25';
+
+export interface OrderRecord25Panel04Props {
+  facilityId: string;
+  title?: string;
+  onSelect?: (item: OrderRecord25) => void;
+}
+
+/**
+ * OrderRecord25Panel04 — operational panel for orders domain slice 25/04.
+ * Supports list, filter by active status, and soft-archive actions.
+ */
+export function OrderRecord25Panel04({ facilityId, title = 'OrderRecord25 Workspace', onSelect }: OrderRecord25Panel04Props) {
+  const [items, setItems] = useState<OrderRecord25[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    listOrderRecord25(facilityId)
+      .then((res) => {
+        if (cancelled) return;
+        startTransition(() => {
+          setItems([...res.items].sort(compareOrderRecord25ByPriority));
+          setError(null);
+        });
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
+
+  const filtered = items.filter((item) => {
+    if (!isOrderRecord25Active(item) && query !== 'show-inactive') return false;
+    if (!query || query === 'show-inactive') return true;
+    const hay = `${item.externalCode} ${item.displayName} ${item.status}`.toLowerCase();
+    return hay.includes(query.toLowerCase());
+  });
+
+  async function onArchive(id: string) {
+    await archiveOrderRecord25(id);
+    setItems((prev) => prev.filter((x) => x.id !== id));
+  }
+
+  return (
+    <section className="lis-panel lis-panel--orders" aria-label={title}>
+      <header className="lis-panel__header">
+        <h2>{title}</h2>
+        <input
+          className="lis-panel__search"
+          placeholder="Filter records…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </header>
+      {loading && <p className="lis-panel__status">Loading orders data…</p>}
+      {error && <p className="lis-panel__error" role="alert">{error}</p>}
+      <ul className="lis-panel__list">
+        {filtered.map((item) => (
+          <li key={item.id} className="lis-panel__item">
+            <button type="button" className="lis-panel__select" onClick={() => onSelect?.(item)}>
+              <span className="lis-panel__label">{formatOrderRecord25Label(item)}</span>
+              <span className="lis-panel__meta">{item.status} · P{item.priority}</span>
+            </button>
+            <button type="button" className="lis-panel__archive" onClick={() => void onArchive(item.id)}>
+              Archive
+            </button>
+          </li>
+        ))}
+      </ul>
+      <footer className="lis-panel__footer">
+        Showing {filtered.length} of {items.length} orders records (slice 25-04)
+      </footer>
+    </section>
+  );
+}
+
+export default OrderRecord25Panel04;
