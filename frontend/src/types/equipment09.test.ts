@@ -1,0 +1,47 @@
+import { describe, expect, it } from 'vitest';
+import {
+  compareEquipmentRecord09ByPriority,
+  formatEquipmentRecord09Label,
+  isEquipmentRecord09Active,
+  type EquipmentRecord09,
+} from '../types/equipment09';
+
+function make(partial: Partial<EquipmentRecord09> = {}): EquipmentRecord09 {
+  return {
+    id: '1',
+    externalCode: 'CODE-9',
+    displayName: 'Record 9',
+    status: 'active',
+    priority: 10,
+    facilityId: 'fac-1',
+    createdBy: 'u1',
+    updatedBy: 'u1',
+    notes: '',
+    metadataJson: '{}',
+    version: 1,
+    isActive: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    ...partial,
+  };
+}
+
+describe('EquipmentRecord09 helpers', () => {
+  it('formats label', () => {
+    expect(formatEquipmentRecord09Label(make())).toContain('CODE-9');
+  });
+
+  it('detects active records', () => {
+    expect(isEquipmentRecord09Active(make())).toBe(true);
+    expect(isEquipmentRecord09Active(make({ status: 'cancelled' }))).toBe(false);
+    expect(isEquipmentRecord09Active(make({ isActive: false }))).toBe(false);
+  });
+
+  it('sorts by priority then name', () => {
+    const a = make({ priority: 1, displayName: 'B' });
+    const b = make({ id: '2', priority: 5, displayName: 'A' });
+    const c = make({ id: '3', priority: 5, displayName: 'C' });
+    const sorted = [a, c, b].sort(compareEquipmentRecord09ByPriority);
+    expect(sorted.map((x) => x.id)).toEqual(['2', '3', '1']);
+  });
+});

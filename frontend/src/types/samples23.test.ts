@@ -1,0 +1,47 @@
+import { describe, expect, it } from 'vitest';
+import {
+  compareSampleRecord23ByPriority,
+  formatSampleRecord23Label,
+  isSampleRecord23Active,
+  type SampleRecord23,
+} from '../types/samples23';
+
+function make(partial: Partial<SampleRecord23> = {}): SampleRecord23 {
+  return {
+    id: '1',
+    externalCode: 'CODE-23',
+    displayName: 'Record 23',
+    status: 'active',
+    priority: 10,
+    facilityId: 'fac-1',
+    createdBy: 'u1',
+    updatedBy: 'u1',
+    notes: '',
+    metadataJson: '{}',
+    version: 1,
+    isActive: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    ...partial,
+  };
+}
+
+describe('SampleRecord23 helpers', () => {
+  it('formats label', () => {
+    expect(formatSampleRecord23Label(make())).toContain('CODE-23');
+  });
+
+  it('detects active records', () => {
+    expect(isSampleRecord23Active(make())).toBe(true);
+    expect(isSampleRecord23Active(make({ status: 'cancelled' }))).toBe(false);
+    expect(isSampleRecord23Active(make({ isActive: false }))).toBe(false);
+  });
+
+  it('sorts by priority then name', () => {
+    const a = make({ priority: 1, displayName: 'B' });
+    const b = make({ id: '2', priority: 5, displayName: 'A' });
+    const c = make({ id: '3', priority: 5, displayName: 'C' });
+    const sorted = [a, c, b].sort(compareSampleRecord23ByPriority);
+    expect(sorted.map((x) => x.id)).toEqual(['2', '3', '1']);
+  });
+});
