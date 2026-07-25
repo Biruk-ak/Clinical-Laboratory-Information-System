@@ -15,12 +15,42 @@ Samples · Tests · Equipment · Results · Doctors · Hospitals · Quality Cont
 
 ## Quick start
 
+### Docker (recommended)
+
 ```bash
 docker compose up --build
 ```
 
-Frontend: http://localhost:5173  
-API: http://localhost:8080/api/health
+- Frontend: http://localhost:5173  
+- API health: http://localhost:8080/api/health
+
+### Local development
+
+**API**
+
+```bash
+cd backend
+go mod download
+go run ./cmd/api
+```
+
+**Web**
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## Tests
+
+```bash
+# Go
+cd backend && go test ./...
+
+# Frontend
+cd frontend && npm test
+```
 
 ## Author
 

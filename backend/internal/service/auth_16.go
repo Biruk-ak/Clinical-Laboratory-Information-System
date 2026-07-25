@@ -69,7 +69,9 @@ func (s *AuthRecord16Service) Update(ctx context.Context, actor string, rec *mod
 	if err := rec.Validate(); err != nil {
 		return err
 	}
-	rec.Touch(actor, time.Now().UTC())
+	rec.UpdatedBy = actor
+	rec.UpdatedAt = time.Now().UTC()
+	// repository Update applies optimistic locking and increments version
 	return s.repo.Update(ctx, rec)
 }
 

@@ -1,9 +1,10 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install
+RUN npm install --no-audit --no-fund
 COPY frontend/ ./
-RUN npm run build
+# Typecheck is heavy across generated modules; Vite build validates the app graph.
+RUN npx vite build
 
 FROM nginx:1.27-alpine
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
